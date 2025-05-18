@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tic Tac Toe Game</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #222, #000);
+      color: #fff;
+      text-align: center;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .screen {
+      display: none;
+      padding: 30px;
+      flex: 1;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      transition: all 0.8s ease;
+    }
+
+    .active {
+      display: flex;
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    input[type="text"] {
+      padding: 12px;
+      font-size: 20px;
+      margin: 10px;
+      border-radius: 8px;
+      border: none;
+      width: 80%;
+      max-width: 300px;
+    }
+
+    button {
+      padding: 12px 24px;
+      font-size: 20px;
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      background: linear-gradient(45deg, #ff6a00, #ffcc00);
+      color: #000;
+      margin: 15px 10px 0;
+      transition: transform 0.2s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+    }
+
+    #game {
+      display: grid;
+      grid-template-columns: repeat(3, 20vw);
+      gap: 10px;
+      justify-content: center;
+      margin: 30px auto;
+    }
+
+    .cell {
+      width: 20vw;
+      height: 20vw;
+      max-width: 100px;
+      max-height: 100px;
+      background-color: #fff;
+      color: #000;
+      font-size: 9vw;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .cell.x { color: red; }
+    .cell.o { color: blue; }
+
+    #confetti-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    #turnText, #resultText {
+      font-size: 5vw;
+      margin-top: 15px;
+    }
+
+    @media (min-width: 768px) {
+      #game {
+        grid-template-columns: repeat(3, 100px);
+      }
+      .cell {
+        width: 100px;
+        height: 100px;
+        font-size: 60px;
+      }
+
+      #turnText, #resultText {
+        font-size: 24px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Screen 1: Name Input -->
+<div class="screen active" id="screen1">
+  <h1>Enter Player Names</h1>
+  <input type="text" id="playerX" placeholder="Player X Name">
+  <input type="text" id="playerO" placeholder="Player O Name">
+  <button onclick="startGame()">Next</button>
+</div>
+
+<!-- Screen 2: Game -->
+<div class="screen" id="screen2">
+  <h1>Tic Tac Toe</h1>
+  <div id="game"></div>
+  <div id="turnText"></div>
+  <div id="resultText"></div>
+  <button onclick="restartGame()">Restart</button>
+  <button onclick="changeNames()">Change Names</button>
+</div>
+
+<canvas id="confetti-canvas"></canvas>
+
+<script>
+  let currentPlayer = "X";
+  let board = ["", "", "", "", "", "", "", "", ""];
+  let isGameOver = false;
+  let playerNames = { X: "", O: "" };
+
+  function startGame() {
+    const nameX = document.getElementById("playerX").value.trim() || "Player X";
+    const nameO = document.getElementById("playerO").value.trim() || "Player O";
+    playerNames.X = nameX;
+    playerNames.O = nameO;
+    document.getElementById("screen1").classList.remove("active");
+    document.getElementById("screen2").classList.add("active");
+    setupBoard();
+  }
+
+  function changeNames() {
+    document.getElementById("screen2").classList.remove("active");
+    document.getElementById("screen1").classList.add("active");
+  }
+
+  function setupBoard() {
+    const gameBoard = document.getElementById("game");
+    gameBoard.innerHTML = "";
+    board = ["", "", "", "", "", "", "", "", ""];
+    isGameOver = false;
+    currentPlayer = "X";
+    updateTurnText();
+    for (let i = 0; i < 9; i++) {
+      const cell = document.createElement("div");
+      cell.classList.add("cell");
+      cell.dataset.index = i;
+      cell.addEventListener("click", handleCellClick);
+      gameBoard.appendChild(cell);
+    }
+  }
+
+  function handleCellClick(e) {
+    const index = e.target.dataset.index;
+    if (board[index] !== "" || isGameOver) return;
+
+    board[index] = currentPlayer;
+    e.target.textContent = currentPlayer;
+    e.target.classList.add(currentPlayer.toLowerCase());
+
+    if (checkWinner()) {
+      isGameOver = true;
+      document.getElementById("resultText").textContent = `${playerNames[currentPlayer]} Wins!`;
+      startConfetti();
+    } else if (!board.includes("")) {
+      isGameOver = true;
+      document.getElementById("resultText").textContent = "It's a Draw!";
+    } else {
+      currentPlayer = currentPlayer === "X" ? "O" : "X";
+      updateTurnText();
+    }
+  }
+
+  function updateTurnText() {
+    document.getElementById("turnText").textContent = `${playerNames[currentPlayer]}'s Turn (${currentPlayer})`;
+    document.getElementById("resultText").textContent = "";
+  }
+
+  function restartGame() {
+    setupBoard();
+    stopConfetti();
+  }
+
+  function checkWinner() {
+    const winPatterns = [
+      [0,1,2], [3,4,5], [6,7,8],
+      [0,3,6], [1,4,7], [2,5,8],
+      [0,4,8], [2,4,6]
+    ];
+    return winPatterns.some(pattern => {
+      const [a,b,c] = pattern;
+      return board[a] && board[a] === board[b] && board[b] === board[c];
+    });
+  }
+
+  // Confetti (basic canvas confetti simulation)
+  const canvas = document.getElementById("confetti-canvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  let particles = [];
+
+  function startConfetti() {
+    particles = [];
+    for (let i = 0; i < 150; i++) {
+      particles.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height - canvas.height,
+        r: Math.random() * 6 + 4,
+        d: Math.random() * 10 + 5,
+        color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+        tilt: Math.random() * 10 - 5
+      });
+    }
+    requestAnimationFrame(updateConfetti);
+  }
+
+  function stopConfetti() {
+    particles = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function updateConfetti() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => {
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2, false);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+      p.y += p.d;
+      if (p.y > canvas.height) {
+        p.y = -10;
+        p.x = Math.random() * canvas.width;
+      }
+    });
+    if (particles.length > 0) requestAnimationFrame(updateConfetti);
+  }
+
+  window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  });
+</script>
+</body>
+</html>
